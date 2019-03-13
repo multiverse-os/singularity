@@ -1,32 +1,8 @@
-# go-memexec [![CircleCI](https://circleci.com/gh/amenzhinsky/go-memexec.svg?style=svg)](https://circleci.com/gh/amenzhinsky/go-memexec)
+<img src="https://avatars2.githubusercontent.com/u/24763891?s=400&u=c1150e7da5667f47159d433d8e49dad99a364f5f&v=4"  width="256px" height="256px" align="right" alt="Multiverse OS Logo">
 
-Small library that executes code from memory.
+## Multiverse: Singularity, binary manipulation toolkit
+**URL** [multiverse-os.org](https://multiverse-os.org)
 
-## Usage
-
-Let's say you have ruby binary embedded into you code by [go-bindata](https://github.com/jteeuwen/go-bindata) and you need to have ability to use it:
-
-```go
-func RubyExec(argv ...string) (b []byte, err error) {
-	// Asset function provided by go-bindata
-	b, err := Asset("/bin/ruby")
-	if err != nil {
-		return
-	}
-
-	// m can be cached to avoid extra copying
-	// when it's needed exec the same code multiple times
-	m, err := memexec.New(b)
-	if err != nil {
-		return
-	}
-	defer func() {
-		cerr := m.Close() 
-		if err == nil {
-			err = cerr
-		}
-	}()
-
-	return m.Command(argv...).Output()
-}
-```
+A component of the `portal-gun` ephemeral virtual machine management system.
+Providing Multiverse OS developers reproducible build environments, and the
+foundation for Multiverse OS compartmentalization based security protocol.
