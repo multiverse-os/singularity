@@ -15,7 +15,7 @@ func embeddedExecutable() []byte {
 	b := empty[:]
 	bx := (*reflect.SliceHeader)(unsafe.Pointer(&b))
 	bx.Data = sx.Data
-	bx.Len = len(_myfile)
+	bx.Len = len(_embeddedExecutable)
 	bx.Cap = bx.Len
 	return b
 }
@@ -55,29 +55,29 @@ var _bindata = map[string]func() ([]byte, error){
 	//"helloworld": helloworld,
 }
 
-func AssetDir(name string) ([]string, error) {
-	node := _bintree
-	if len(name) != 0 {
-		cannonicalName := strings.Replace(name, "\\", "/", -1)
-		pathList := strings.Split(cannonicalName, "/")
-		for _, p := range pathList {
-			node = node.Children[p]
-			if node == nil {
-				return nil, fmt.Errorf("Asset %s not found", name)
-			}
-		}
-	}
-	if node.Func != nil {
-		return nil, fmt.Errorf("Asset %s not found", name)
-	}
-	rv := make([]string, 0, len(node.Children))
-	for name := range node.Children {
-		rv = append(rv, name)
-	}
-	return rv, nil
-}
-
-type _bintree_t struct {
-	Func     func() ([]byte, error)
-	Children map[string]*_bintree_t
-}
+//type _bintree_t struct {
+//	Func     func() ([]byte, error)
+//	Children map[string]*_bintree_t
+//}
+//
+//func AssetDir(name string) ([]string, error) {
+//	node := _bintree
+//	if len(name) != 0 {
+//		cannonicalName := strings.Replace(name, "\\", "/", -1)
+//		pathList := strings.Split(cannonicalName, "/")
+//		for _, p := range pathList {
+//			node = node.Children[p]
+//			if node == nil {
+//				return nil, fmt.Errorf("Asset %s not found", name)
+//			}
+//		}
+//	}
+//	if node.Func != nil {
+//		return nil, fmt.Errorf("Asset %s not found", name)
+//	}
+//	rv := make([]string, 0, len(node.Children))
+//	for name := range node.Children {
+//		rv = append(rv, name)
+//	}
+//	return rv, nil
+//}
