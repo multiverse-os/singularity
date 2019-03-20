@@ -2,7 +2,9 @@ package memfd
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"syscall"
 
 	"github.com/multiverse-os/singularity/msyscall"
@@ -29,6 +31,27 @@ type MemFD struct {
 	Bytes []byte
 }
 
+func (self *MemFD) FDPath() string {
+	return fmt.Sprintf("/proc/self/fd/%d", int(self.Fd()))
+}
+
+func (self *MemFD) FDFileInfo() (os.FileInfo, error) {
+	return os.Lstat(self.FDPath())
+}
+
+func (self *MemFD) FDPerm() (os.FileMode, error) {
+	fi, err := self.FDFileInfo()
+	return fi.Mode().Perm(), err
+}
+
+func (self *MemFD) Command(arg ...string) *exec.Cmd {
+	return exec.Command(self.FDPath(), arg...)
+}
+
+func (self *MemFD) Close() error {
+	return self.File.Close()
+}
+
 func Create() (*MemFD, error) {
 	return CreateNameFlags("", Cloexec|AllowSealing)
 }
@@ -52,66 +75,66 @@ func New(fd uintptr) (*MemFD, error) {
 	return &mfd, nil
 }
 
-func (mfd *MemFD) Size() int64 {
-	fi, err := mfd.Stat()
+func (self *MemFD) Size() int64 {
+	fi, err := self.Stat()
 	if err != nil {
 		return 0
 	}
 	return fi.Size()
 }
 
-func (mfd *MemFD) SetSize(size int64) error {
-	return mfd.Truncate(size)
+func (self *MemFD) SetSize(size int64) error {
+	return self.Truncate(size)
 }
 
-func (mfd *MemFD) ClearCloexec() {
-	_ = msyscall.FcntlCloexec(mfd.Fd(), 0)
+func (self *MemFD) ClearCloexec() {
+	_ = msyscall.FcntlCloexec(self.Fd(), 0)
 }
 
-func (mfd *MemFD) SetCloexec() {
-	_ = msyscall.FcntlCloexec(mfd.Fd(), 1)
+func (self *MemFD) SetCloexec() {
+	_ = msyscall.FcntlCloexec(self.Fd(), 1)
 }
 
-func (mfd *MemFD) seals() (int, error) {
-	return msyscall.FcntlSeals(mfd.Fd())
+func (self *MemFD) seals() (int, error) {
+	return msyscall.FcntlSeals(self.Fd())
 }
 
-func (mfd *MemFD) Seals() int {
-	seals, err := mfd.seals()
+func (self *MemFD) Seals() int {
+	seals, err := self.seals()
 	if err != nil {
 		return 0
 	}
 	return seals
 }
 
-func (mfd *MemFD) SetSeals(seals int) error {
-	return msyscall.FcntlSetSeals(mfd.Fd(), seals)
+func (self *MemFD) SetSeals(seals int) error {
+	return msyscall.FcntlSetSeals(self.Fd(), seals)
 }
 
-func (mfd *MemFD) IsImmutable() bool {
-	seals, err := msyscall.FcntlSeals(mfd.Fd())
+func (self *MemFD) IsImmutable() bool {
+	seals, err := msyscall.FcntlSeals(self.Fd())
 	if err != nil {
 		return false
 	}
 	return seals == SealAll
 }
 
-func (mfd *MemFD) SetImmutable() error {
-	err := mfd.SetSeals(SealAll)
+func (self *MemFD) SetImmutable() error {
+	err := self.SetSeals(SealAll)
 	if err == nil {
 		return nil
 	}
-	if mfd.IsImmutable() {
+	if self.IsImmutable() {
 		return nil
 	}
 	return err
 }
 
-func (mfd *MemFD) Map() ([]byte, error) {
-	if cap(mfd.Bytes) > 0 {
-		return mfd.Bytes, nil
+func (self *MemFD) Map() ([]byte, error) {
+	if cap(self.Bytes) > 0 {
+		return self.Bytes, nil
 	}
-	seals, err := mfd.seals()
+	seals, err := self.seals()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -123,37 +146,37 @@ func (mfd *MemFD) Map() ([]byte, error) {
 		prot = syscall.PROT_READ | syscall.PROT_WRITE
 		flags = syscall.MAP_SHARED
 	}
-	size := mfd.Size()
+	size := self.Size()
 	if size > maxint {
 		return []byte{}, ErrTooBig
 	}
 	if size == 0 {
 		return []byte{}, nil
 	}
-	bytes, err := syscall.Mmap(int(mfd.Fd()), 0, int(size), prot, flags)
+	bytes, err := syscall.Mmap(int(self.Fd()), 0, int(size), prot, flags)
 	if err != nil {
 		return []byte{}, err
 	}
-	mfd.Bytes = bytes
+	self.Bytes = bytes
 	return bytes, nil
 }
 
-func (mfd *MemFD) Unmap() error {
-	if cap(mfd.Bytes) == 0 {
+func (self *MemFD) Unmap() error {
+	if cap(self.Bytes) == 0 {
 		return nil
 	}
-	err := syscall.Munmap(mfd.Bytes)
-	mfd.Bytes = []byte{}
+	err := syscall.Munmap(self.Bytes)
+	self.Bytes = []byte{}
 	return err
 }
 
-func (mfd *MemFD) Remap() ([]byte, error) {
-	if cap(mfd.Bytes) == 0 {
-		return mfd.Map()
+func (self *MemFD) Remap() ([]byte, error) {
+	if cap(self.Bytes) == 0 {
+		return self.Map()
 	}
-	err := mfd.Unmap()
+	err := self.Unmap()
 	if err != nil {
 		return []byte{}, err
 	}
-	return mfd.Map()
+	return self.Map()
 }
