@@ -10,9 +10,7 @@ import (
 	"github.com/multiverse-os/singularity/msyscall"
 )
 
-var (
-	ErrTooBig = errors.New("memfd too large for slice")
-)
+var ErrTooBig = errors.New("memfd too large for slice")
 
 const maxint int64 = int64(^uint(0) >> 1)
 
