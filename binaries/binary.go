@@ -1,5 +1,6 @@
 package binaries
 
+//https://github.com/mewspring/binary/blob/master/binary.go
 type Binary struct {
 	Name     string
 	Filename string

