@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	"github.com/multiverse-os/singularity/msyscall"
+	msyscall "github.com/multiverse-os/singularity/msyscall"
 )
 
 var ErrTooBig = errors.New("memfd too large for slice")
@@ -46,6 +46,14 @@ func (self *MemFD) Command(arg ...string) *exec.Cmd {
 	return exec.Command(self.FDPath(), arg...)
 }
 
+func (self *MemFD) Execute(arg ...string) (err error) {
+	err = syscall.Exec(self.FDPath(), append([]string{"ruby"}, arg...), nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (self *MemFD) Close() error {
 	return self.File.Close()
 }
@@ -71,6 +79,14 @@ func New(fd uintptr) (*MemFD, error) {
 	// TODO(justin) read name with readlink /proc/self/fd
 	mfd := MemFD{os.NewFile(uintptr(fd), ""), []byte{}}
 	return &mfd, nil
+}
+
+func (self *MemFD) Write(fd uintptr) (*MemFD, error) {
+	_, err := syscall.Write(int(fd), self.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return self, nil
 }
 
 func (self *MemFD) Size() int64 {
@@ -157,6 +173,12 @@ func (self *MemFD) Map() ([]byte, error) {
 	}
 	self.Bytes = bytes
 	return bytes, nil
+}
+
+func (self *MemFD) Zero() {
+	for i := range self.Bytes {
+		self.Bytes[i] = 0
+	}
 }
 
 func (self *MemFD) Unmap() error {
