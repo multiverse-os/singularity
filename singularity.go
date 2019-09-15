@@ -10,6 +10,17 @@ import (
 	msyscall "github.com/multiverse-os/singularity/msyscall"
 )
 
+// TODO: Singularity Tasks:
+// 1) Take the test.rb stored as binary, and put it in the MemFS and use the ruby
+// binary executed solely in memory to run the script in memFS
+// 1a) Write exit code to binary
+// 2a) Test long running processes and manage them, relaunch, etc
+
+// 2) Add files to binary and fill them with data during runtime
+// 3) Run ruby scripts from loaded file abstracts loaded during runtime (similar
+// to patching, will be used for patching and other tasks in Multiverse OS)
+// 4) Add compresssiona and cryptography middleware to data
+
 var CurrentProcess Process
 
 type Process struct {
@@ -19,7 +30,6 @@ type Process struct {
 
 type Binary struct {
 	ParentProcess *Process
-	Path          string
 	Name          string
 	Size          int
 	Data          []byte
@@ -61,33 +71,30 @@ func (self *Binary) NewMemFD() *Binary {
 	self.MemFD = memfd.MemFD{os.NewFile(uintptr(fd), self.Name), self.Data}
 	mfdBytes, err := self.MemFD.Map()
 	if err != nil || self.Size != len(mfdBytes) {
-		fmt.Println("[fatal error] failed to create memory fd or write binary data to fd:", err)
+		fmt.Println("[fatal] failed to create memory fd or write binary data to fd:", err)
 		os.Exit(1)
 	}
 	perm, err := self.MemFD.FDPerm()
 	if err != nil {
-		fmt.Println("[fatal error] failed to obtain mem FD permissions:", err)
+		fmt.Println("[fatal] failed to obtain mem FD permissions:", err)
 		os.Exit(1)
 	} else {
 		self.Permissions = perm
 	}
-
 	fmt.Println("[singularity] mapped binary fd, bytes written to fd: [", len(mfdBytes), "b ]")
-	fmt.Println("[singularity] fd path:", self.MemFD.FDPath())
 	self.PrintString()
-
 	return self
 }
 
 func (self *Binary) Execute(arguments ...string) ([]byte, error) {
 	fmt.Println("[singularity] Inside Execute()")
-	//self.MemFD.SetCloexec()
 	return exec.Command(self.MemFD.Name(), arguments...).Output()
 }
 
 func (self *Binary) PrintString() {
 	fmt.Println("===[LOADED MemFD Executable ]================")
-	fmt.Println("| |-[Name] ", self.Name)
-	fmt.Println("| |-[Size] ", self.Size)
+	fmt.Println("| |-[Name   ] ", self.Name)
+	fmt.Println("| |-[Size   ] ", self.Size)
+	fmt.Println("| |-[FD Path] ", self.MemFD.FDPath())
 	fmt.Println("=============================================")
 }
