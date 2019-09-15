@@ -3,5 +3,12 @@
 ## Multiverse: `singularity` Executable Binary Toolkit
 **URL** [multiverse-os.org](https://multiverse-os.org)
 
-Singularity is a a growing collection of tools under active development; features under development include real-time updating through live modification of a running binary to enable seamless no-downtime updates
+Singularity is a a growing collection of tools under active development;
+features under development include real-time updating through live
+modification of a running binary to enable seamless no-downtime updates.
+
+Currently, completely in memory execution of binaries without creating 
+temporary files or touching the disk is possible using MemoryFD. 
+
+
 
