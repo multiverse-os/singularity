@@ -1,3 +1,0 @@
-[submodule "memfd"]
-	path = memfd
-	url = git://github.com/multiverse-os/memfd
