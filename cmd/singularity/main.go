@@ -13,12 +13,8 @@ func main() {
 	fmt.Println("An example of binary execution completely in memory without ")
 	fmt.Println("touching the disk, or creating temporary files using memFD.\n")
 
-	binary := singularity.LoadBinary("ruby", binaries.Ruby)
+	binary := singularity.NewBinary("ruby", binaries.Ruby)
 
-	output, err := binary.Execute("test.rb")
-	if err != nil {
-		fmt.Println("[singularity] failed to execute binary in memory:", err)
-	}
+	binary.Execute("-e p 'test ruby code'")
 
-	fmt.Println("output:", string(output))
 }
