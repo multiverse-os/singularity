@@ -4,37 +4,30 @@ import (
 	"fmt"
 	"strings"
 
+	memexec "github.com/multiverse-os/singularity/memexec"
 	memfd "github.com/multiverse-os/singularity/memfd"
 )
-
-// TODO: Singularity Tasks:
-// 1) Take the test.rb stored as binary, and put it in the MemFS and use the ruby
-// binary executed solely in memory to run the script in memFS
-// 1a) Write exit code to binary
-// 2a) Test long running processes and manage them, relaunch, etc
-
-// 2) Add files to binary and fill them with data during runtime
-// 3) Run ruby scripts from loaded file abstracts loaded during runtime (similar
-// to patching, will be used for patching and other tasks in Multiverse OS)
-// 4) Add compresssiona and cryptography middleware to data
 
 const (
 	mfdCloexec  = 0x0001
 	memfdCreate = 319
 )
 
+type Filesystem struct {
+	Path string
+}
+
 type Binary struct {
-	Name     string
 	Size     int
 	Output   string
 	ExitCode int
 	FD       *memfd.MemFD
+	FS       Filesystem
 }
 
-func NewBinary(name string, bytes []byte) *Binary {
+func MemoryCommand(name string, bytes []byte) *Binary {
 	binary := &Binary{
-		Name: name,
-		FD:   memfd.New(name),
+		FD: memfd.New(name),
 	}
 	bytesWritten, err := binary.FD.Write(bytes)
 	if err != nil {
@@ -45,16 +38,27 @@ func NewBinary(name string, bytes []byte) *Binary {
 	return binary
 }
 
-func (self *Binary) Execute(arguments string) error {
-	fmt.Println("[singularity] Inside Execute():", self.Name)
-	return self.FD.Exec(arguments)
+func (self *Binary) Run(arguments ...string) error {
+	fmt.Println("[singularity] ? Inside Execute():", self.FD.Name())
+
+	pid, fd, err := self.FD.Execute(arguments...)
+	fmt.Println("pid:", pid)
+	fmt.Println("fd path:", fmt.Sprintf("/proc/self/fd/%d", fd))
+
+	outBytes, err := memexec.MemFD(self.FD.File, arguments...).CombinedOutput()
+	if err != nil {
+		fmt.Println("[error] failed to execute memexec.MemFD() from singularity:", err)
+	}
+	fmt.Println("output:", string(outBytes))
+
+	return err
 }
 
 func (self *Binary) String() {
 	fmt.Println("  ++================+========================++")
 	fmt.Println("  ||   Attribute    |          Value         ||")
 	fmt.Println("  ++================+========================++")
-	fmt.Println("  |      Name       |    ", self.Name, strings.Repeat(" ", (18-len(self.Name))), "|")
+	fmt.Println("  |      Name       |    ", self.FD.Name(), strings.Repeat(" ", (18-len(self.FD.Name()))), "|")
 	fmt.Println("  +-----------------+-------------------------+")
 	fmt.Println("  |      Size       |    ", self.Size, strings.Repeat(" ", (16-len(string(self.Size)))), "|")
 	fmt.Println("  +-----------------+-------------------------+")
