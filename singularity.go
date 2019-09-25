@@ -4,28 +4,18 @@ import (
 	"fmt"
 	"strings"
 
-	memexec "github.com/multiverse-os/singularity/memexec"
+	//memexec "github.com/multiverse-os/singularity/memexec"
 	memfd "github.com/multiverse-os/singularity/memfd"
 )
-
-const (
-	mfdCloexec  = 0x0001
-	memfdCreate = 319
-)
-
-type Filesystem struct {
-	Path string
-}
 
 type Binary struct {
 	Size     int
 	Output   string
 	ExitCode int
 	FD       *memfd.MemFD
-	FS       Filesystem
 }
 
-func MemoryCommand(name string, bytes []byte) *Binary {
+func LoadExecutable(name string, bytes []byte) *Binary {
 	binary := &Binary{
 		FD: memfd.New(name),
 	}
@@ -41,15 +31,18 @@ func MemoryCommand(name string, bytes []byte) *Binary {
 func (self *Binary) Run(arguments ...string) error {
 	fmt.Println("[singularity] ? Inside Execute():", self.FD.Name())
 
-	pid, fd, err := self.FD.Execute(arguments...)
-	fmt.Println("pid:", pid)
-	fmt.Println("fd path:", fmt.Sprintf("/proc/self/fd/%d", fd))
-
-	outBytes, err := memexec.MemFD(self.FD.File, arguments...).CombinedOutput()
+	err := self.FD.Execute(arguments...)
 	if err != nil {
-		fmt.Println("[error] failed to execute memexec.MemFD() from singularity:", err)
+		fmt.Println("[error] failed to execute memory fd:", err)
 	}
-	fmt.Println("output:", string(outBytes))
+	//fmt.Println("pid:", pid)
+	//fmt.Println("fd path:", fmt.Sprintf("/proc/self/fd/%d", fd))
+
+	//outBytes, err := memexec.MemFD(self.FD.File, arguments...).CombinedOutput()
+	//if err != nil {
+	//	fmt.Println("[error] failed to execute memexec.MemFD() from singularity:", err)
+	//}
+	//fmt.Println("output:", string(outBytes))
 
 	return err
 }

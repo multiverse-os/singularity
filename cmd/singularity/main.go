@@ -18,7 +18,10 @@ func main() {
 	fmt.Println("An example of binary execution completely in memory without ")
 	fmt.Println("touching the disk, or creating temporary files using memFD.\n")
 
-	singularity.MemoryCommand("rubytest", executable.Ruby).Run(`-e "hello world from ruby"`)
+	err := singularity.LoadExecutable("ruby", executable.Ruby).Run("-e 'p \"hello world from ruby\"'")
+	if err != nil {
+		fmt.Println("[error] failed to run executable from memory:", err)
+	}
 
 	//osfs := vfs.OS()
 	//osfs.Mkdir("/tmp", 0777)
