@@ -31,10 +31,7 @@ func LoadExecutable(name string, bytes []byte) *Binary {
 func (self *Binary) Run(arguments ...string) error {
 	fmt.Println("[singularity] ? Inside Execute():", self.FD.Name())
 
-	err := self.FD.Execute(arguments...)
-	if err != nil {
-		fmt.Println("[error] failed to execute memory fd:", err)
-	}
+	self.FD.Execute(arguments...)
 	//fmt.Println("pid:", pid)
 	//fmt.Println("fd path:", fmt.Sprintf("/proc/self/fd/%d", fd))
 
@@ -44,7 +41,7 @@ func (self *Binary) Run(arguments ...string) error {
 	//}
 	//fmt.Println("output:", string(outBytes))
 
-	return err
+	return nil
 }
 
 func (self *Binary) String() {
